@@ -1,0 +1,177 @@
+openapi: 3.0.3
+info:
+  title: DevScope API
+  version: 1.0.0
+  description: |
+    VS Code 扩展内置的本地 API（v1）。
+    - 仅监听本机（默认 127.0.0.1）。
+    - MVP 暴露 /health 与 /diagnostics。
+    - 统一在响应体中包含 meta.version 或 version="v1" 标识。
+servers:
+  - url: http://127.0.0.1:3000
+paths:
+  /health:
+    get:
+      summary: 健康检查
+      operationId: getHealth
+      responses:
+        '200':
+          description: 服务健康信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '500':
+          description: 内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /diagnostics:
+    get:
+      summary: 获取诊断信息
+      operationId: getDiagnostics
+      parameters:
+        - in: query
+          name: activeOnly
+          schema:
+            type: boolean
+            default: true
+          description: 仅返回活动文件的诊断（默认）。
+        - in: query
+          name: workspaceOnly
+          schema:
+            type: boolean
+            default: false
+          description: 仅返回工作区范围诊断；与 activeOnly 互斥，优先级 activeOnly > workspaceOnly > all。
+      responses:
+        '200':
+          description: 诊断信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiagnosticsResponse'
+        '400':
+          description: 参数错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: 内部错误
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status, version, pid, startedAt, host, port]
+      properties:
+        status:
+          type: string
+          enum: [ok]
+        version:
+          type: string
+          example: v1
+        pid:
+          type: integer
+        startedAt:
+          type: string
+          format: date-time
+        host:
+          type: string
+          example: 127.0.0.1
+        port:
+          type: integer
+          example: 3000
+    ErrorResponse:
+      type: object
+      required: [version, error]
+      properties:
+        version:
+          type: string
+          example: v1
+        requestId:
+          type: string
+          description: 可选的请求追踪 ID。
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              example: InternalError
+            message:
+              type: string
+    DiagnosticsResponse:
+      type: object
+      required: [meta, summary, items]
+      properties:
+        meta:
+          type: object
+          required: [version, scope, ts]
+          properties:
+            version:
+              type: string
+              example: v1
+            scope:
+              type: string
+              enum: [active, workspace, all]
+            ts:
+              type: integer
+              description: 时间戳（毫秒）。
+        summary:
+          type: object
+          required: [errors, warnings, infos, hints]
+          properties:
+            errors: { type: integer }
+            warnings: { type: integer }
+            infos: { type: integer }
+            hints: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiagnosticItem'
+    DiagnosticItem:
+      type: object
+      required: [uri, range, severity, message]
+      properties:
+        uri:
+          type: string
+          description: 文档 URI（如 file:// 或 vscode 资源 URI）。
+        range:
+          $ref: '#/components/schemas/DiagnosticRange'
+        severity:
+          type: string
+          enum: [Error, Warning, Info, Hint]
+        source:
+          type: string
+          nullable: true
+        code:
+          oneOf:
+            - type: string
+            - type: number
+          nullable: true
+        message:
+          type: string
+    DiagnosticRange:
+      type: object
+      required: [start, end]
+      properties:
+        start:
+          $ref: '#/components/schemas/Position'
+        end:
+          $ref: '#/components/schemas/Position'
+    Position:
+      type: object
+      required: [line, char]
+      properties:
+        line:
+          type: integer
+          minimum: 0
+        char:
+          type: integer
+          minimum: 0
+

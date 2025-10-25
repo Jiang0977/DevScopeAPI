@@ -1,0 +1,72 @@
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs (keep out/, but exclude dist/)
+dist/
+*.tsbuildinfo
+
+# Source files that are compiled
+src/
+tsconfig.json
+*.ts
+!*.d.ts
+
+# Test files
+test/
+jest.config.js
+coverage/
+
+# Documentation files (keep README and LICENSE)
+*.md
+!README.md
+!README_EN.md
+!CHANGELOG.md
+!LICENSE
+PUBLISH_GUIDE.md
+DEBUG_GUIDE.md
+PRD.md
+
+# VS Code specific
+.vscode/
+*.vsix
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+.env.production
+
+# IDE
+.idea/
+*.swp
+*.swo
+
+# Temporary files
+*.tmp
+*.temp
+
+# Claude settings
+.claude/
+AGENTS.md
+
+# Scripts (keep package.json scripts)
+scripts/
+
+# Development files
+.gitignore
+.git
+.github/
+
+# Only include necessary resource files
+resources/icon.svg
+resources/icon-*.png
+!resources/icon.png

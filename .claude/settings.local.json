@@ -11,7 +11,13 @@
       "Bash(npm run compile:*)",
       "Bash(git rm:*)",
       "Bash(git pull:*)",
-      "Bash(git checkout:*)"
+      "Bash(git checkout:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run generate-icons:*)",
+      "Bash(npx vsce verify:*)",
+      "Bash(npx vsce:*)",
+      "Bash(npm run package:*)",
+      "Bash(npx @vscode/vsce package:*)"
     ],
     "deny": [],
     "ask": []

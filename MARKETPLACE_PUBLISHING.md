@@ -26,7 +26,7 @@
 5. 点击 **"Create New Publisher"**
 6. 填写信息：
    - **Publisher Name**: `Jonan`
-   - **Display Name**: `Jiang Xiaogang`
+   - **Display Name**: 
    - **Email**: 您的邮箱
    - **Website**: (可选) 您的网站
 

@@ -35,6 +35,13 @@ curl -s "http://127.0.0.1:3000/diagnostics" | jq .
 
 # 工作区范围
 curl -s "http://127.0.0.1:3000/diagnostics?workspaceOnly=true&activeOnly=false" | jq .
+
+# 按严重性级别过滤
+curl -s "http://127.0.0.1:3000/diagnostics?severity=warning" | jq .
+curl -s "http://127.0.0.1:3000/diagnostics?severity=info" | jq .
+
+# 组合使用：工作区范围 + info 级别及以上
+curl -s "http://127.0.0.1:3000/diagnostics?workspaceOnly=true&severity=info" | jq .
 ```
 
 ## 配置项（Settings）
@@ -47,6 +54,34 @@ curl -s "http://127.0.0.1:3000/diagnostics?workspaceOnly=true&activeOnly=false" 
 
 ## API 契约
 - OpenAPI 文档：`docs/api/openapi.yaml`
+
+### 诊断 API 参数说明
+`GET /diagnostics` 支持以下查询参数：
+
+- **activeOnly** (boolean, 默认 true)：仅返回活动文件的诊断
+- **workspaceOnly** (boolean, 默认 false)：仅返回工作区范围诊断
+- **severity** (string, 默认 error)：按严重性级别过滤诊断信息
+  - `error`：仅返回错误级别
+  - `warning`：返回警告及以上级别（警告 + 错误）
+  - `info`：返回信息及以上级别（信息 + 警告 + 错误）
+  - `hint`：返回所有级别（提示 + 信息 + 警告 + 错误）
+
+**参数优先级说明**：
+
+1. **范围参数优先级**：
+   - 如果用户显式设置 `workspaceOnly=true`，将覆盖默认的 `activeOnly=true` 行为
+   - `activeOnly=false` 且未设置 `workspaceOnly` → 返回所有文件诊断 (`all`)
+   - 两个参数都为 true → 为了向后兼容，使用 `active` 范围
+
+2. **参数组合规则**：
+   - severity 参数与 scope 参数正交独立，可组合使用
+   - severity 控制诊断的严重性过滤
+   - activeOnly/workspaceOnly 控制空间范围
+
+3. **常见使用场景**：
+   - 获取工作区所有警告：`?workspaceOnly=true&severity=warning`
+   - 获取活动文件信息及以上：`?severity=info`（默认行为）
+   - 获取全项目提示及以上：`?activeOnly=false&severity=hint`
 
 ### 示例响应
 - `GET /health`

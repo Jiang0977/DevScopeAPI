@@ -1,4 +1,4 @@
-openapi: 3.0.3
+openapi: 3.1.0
 info:
   title: DevScope API
   version: 1.0.0
@@ -44,6 +44,13 @@ paths:
             type: boolean
             default: false
           description: 仅返回工作区范围诊断；与 activeOnly 互斥，优先级 activeOnly > workspaceOnly > all。
+        - in: query
+          name: severity
+          schema:
+            type: string
+            enum: [error, warning, info, hint]
+            default: error
+          description: 返回指定严重性级别及以上的诊断信息。级别层次：error > warning > info > hint。
       responses:
         '200':
           description: 诊断信息

@@ -1,5 +1,7 @@
-# Node.js
-node_modules/
+# Node.js (include express dependency)
+node_modules/**
+!node_modules/express/**
+!node_modules/express/**/*
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

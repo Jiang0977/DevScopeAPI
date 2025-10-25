@@ -2,7 +2,7 @@
   "name": "devscope-api",
   "displayName": "DevScope API",
   "description": "Expose VS Code diagnostics and status via a local HTTP API.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "Jonan",
   "engines": {
     "vscode": "^1.85.0"
@@ -83,8 +83,9 @@
     "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "npm run generate-icons && @vscode/vsce package",
-    "package:only": "@vscode/vsce package",
+    "package": "npm run generate-icons && @vscode/vsce package --dependencies",
+    "package:only": "@vscode/vsce package --dependencies",
+    "package:no-deps": "npm run generate-icons && @vscode/vsce package",
     "test": "jest",
     "generate-icons": "node scripts/generate-icons.js",
     "mcp:github": "@modelcontextprotocol/server-github"

@@ -17,7 +17,11 @@
       "Bash(npx vsce verify:*)",
       "Bash(npx vsce:*)",
       "Bash(npm run package:*)",
-      "Bash(npx @vscode/vsce package:*)"
+      "Bash(npx @vscode/vsce package:*)",
+      "Bash(npm run package:only:*)",
+      "Bash(npx @vscode/vsce verify-devscope-api-0.1.0.vsix:*)",
+      "Bash(npx @vscode/vsce ls:*)",
+      "Bash(node:*)"
     ],
     "deny": [],
     "ask": []

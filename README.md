@@ -9,6 +9,7 @@
   - `GET /diagnostics`：诊断信息（默认返回活动文件）
 - VS Code 状态栏显示运行状态；命令面板支持启动/停止/重启/查看状态
 - 配置项：端口、主机、默认范围、响应版本
+- 智能端口检测与冲突解决
 
 ## 环境要求
 - Node.js 18+（建议 18/20/22）
@@ -22,13 +23,16 @@ npm run compile
 
 ## 在 VS Code 中调试运行
 1. 打开本仓库于 VS Code
-2. 运行视图选择配置 “Run Extension”，按 F5 启动扩展开发主机
+2. 运行视图选择配置 "Run Extension"，按 F5 启动扩展开发主机
 3. 新窗口状态栏应显示 `DevScope: Running @ 127.0.0.1:3000`
 
 ## 快速验证（命令行）
 ```bash
-# 健康检查
+# 健康检查（默认端口 3000）
 curl -s http://127.0.0.1:3000/health | jq .
+
+# 使用自定义端口（例如 8080）
+curl -s http://127.0.0.1:8080/health | jq .
 
 # 仅活动文件（默认）
 curl -s "http://127.0.0.1:3000/diagnostics" | jq .
@@ -42,15 +46,58 @@ curl -s "http://127.0.0.1:3000/diagnostics?severity=info" | jq .
 
 # 组合使用：工作区范围 + info 级别及以上
 curl -s "http://127.0.0.1:3000/diagnostics?workspaceOnly=true&severity=info" | jq .
+
+# 自定义端口 + 严重性过滤
+curl -s "http://127.0.0.1:8080/diagnostics?workspaceOnly=true&severity=warning" | jq .
 ```
 
 ## 配置项（Settings）
-- `devscopeapi.port: number`（默认 `3000`）
-- `devscopeapi.host: string`（默认 `127.0.0.1`）
-- `devscopeapi.response.format: string`（默认 `v1`）
-- `devscopeapi.diagnostics.defaultScope: "active" | "workspace" | "all"`（默认 `"active"`）
 
-变更 `host/port` 需重启服务；扩展会提示是否立即重启生效。
+### 网络配置
+- **`devscopeapi.port: number`**（默认 `3000`，范围 `1024-65535`）
+  - 设置 HTTP 服务器监听端口
+  - 如果指定端口被占用，自动寻找可用端口
+  - 端口冲突时会显示提示和解决方案
+- **`devscopeapi.host: string`**（默认 `127.0.0.1`）
+  - 设置监听地址，建议使用 `127.0.0.1` 保证安全
+
+### 功能配置
+- **`devscopeapi.response.format: string`**（默认 `v1`）
+  - API 响应格式版本
+- **`devscopeapi.diagnostics.defaultScope: "active" | "workspace" | "all"`**（默认 `"active"`）
+  - 默认诊断范围设置
+
+### 端口配置方法
+
+1. **VS Code 设置界面**：
+   - 打开设置 (`Ctrl/Cmd + ,`)
+   - 搜索 "devscope" 或 "DevScope"
+   - 修改 "DevScope Api › Port" 数值
+
+2. **settings.json 配置**：
+   ```json
+   {
+     "devscopeapi.port": 8080
+   }
+   ```
+
+3. **命令行验证**：
+   ```bash
+   # 使用自定义端口访问 API
+   curl "http://127.0.0.1:8080/health"
+   curl "http://127.0.0.1:8080/diagnostics"
+   ```
+
+### 端口冲突处理
+- **自动检测**：启动前检查端口可用性
+- **智能选择**：端口被占用时自动寻找可用端口
+- **友好提示**：显示冲突原因和解决建议
+- **快速操作**：提供打开设置、重试等快捷操作
+
+**注意事项**：
+- 变更 `host/port` 需重启服务
+- 扩展会自动提示是否立即重启生效
+- 低于 1024 的端口可能需要管理员权限
 
 ## API 契约
 - OpenAPI 文档：`docs/api/openapi.yaml`
@@ -66,7 +113,7 @@ curl -s "http://127.0.0.1:3000/diagnostics?workspaceOnly=true&severity=info" | j
   - `info`：返回信息及以上级别（信息 + 警告 + 错误）
   - `hint`：返回所有级别（提示 + 信息 + 警告 + 错误）
 
-**参数优先级说明**：
+### 参数优先级说明
 
 1. **范围参数优先级**：
    - 如果用户显式设置 `workspaceOnly=true`，将覆盖默认的 `activeOnly=true` 行为
@@ -124,17 +171,18 @@ curl -s "http://127.0.0.1:3000/diagnostics?workspaceOnly=true&severity=info" | j
   - 正常：`DevScope: Running @ 127.0.0.1:3000`
   - 停止：`DevScope: Stopped`
   - 异常：`DevScope: Error`（悬浮提示具体原因）
+  - 端口变更：`DevScope: Running @ 127.0.0.1:8080 (requested: 3000)`
 
 ## 安全与注意事项
 - 默认仅监听 `127.0.0.1`，避免被局域网访问
 - 如需对外 (`0.0.0.0`)，务必结合系统防火墙与后续的 Token 鉴权（M2 计划）
 - 诊断可能较多，大仓建议按需使用 `active` 或 `workspace` 范围
+- 智能端口检测：启动时自动检查端口可用性，冲突时自动寻找替代端口
 
 ## 运行测试
 ```bash
 npm test
 ```
-测试使用了 `jest` + `supertest`，并对 `vscode` API 做了轻量 mock。
 
 ## 主要文件
 - 扩展入口：`src/extension.ts:1`
@@ -146,17 +194,23 @@ npm test
 - 日志通道：`src/utils/logger.ts:1`
 
 ## 故障排查
-- 端口被占用：
-  - 状态栏显示 `Error`；命令面板/弹窗提示具体端口
-  - 修改 `devscopeapi.port` 或释放占用后重试
-- 接口 404：确认路由路径是否正确（`/health`、`/diagnostics`）
-- 返回为空：活动文件无诊断属正常，可切换到 `workspaceOnly=true`
+- **端口被占用**：
+  - 状态栏显示 `Error`
+  - 自动寻找可用端口并显示警告
+  - 提供打开设置、重试等快捷操作
+  - 错误消息包含具体的解决建议
+- **接口 404**：确认路由路径是否正确（`/health`、`/diagnostics`）
+- **返回为空**：活动文件无诊断属正常，可切换到 `workspaceOnly=true`
+- **权限问题**：低于 1024 的端口可能需要管理员权限
 
 ## 版本与发布
-- 响应格式当前为 `v1`，后续变更将通过 `meta.version` 进行版本化
-- 打包：
-```bash
-npm run package
-```
-将生成 `.vsix` 包，便于本地安装或上传到 Marketplace（需要配置 publisher）。
+- 0.1.0：初始版本，基础健康检查与诊断 API
+- 0.2.0：添加 severity 参数过滤，增强端口处理
 
+## 更新日志
+- 0.2.0 (2025-01-25)：智能端口检测与错误处理增强
+  - 添加端口占用检测逻辑
+  - 实现自动端口选择功能
+  - 增强错误消息和用户提示
+  - 添加端口变更通知
+  - 完善配置文档和示例

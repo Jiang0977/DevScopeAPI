@@ -21,12 +21,50 @@ async function startServer(context: vscode.ExtensionContext) {
   if (!serverCtl) serverCtl = createServer(logger, { port: cfg.port, host: cfg.host });
   try {
     await serverCtl.start();
-    updateStatus(`DevScope: Running @ ${cfg.host}:${cfg.port}`, 'Click to stop');
+    const actualPort = serverCtl.getActualPort();
+    const portDisplay = actualPort === cfg.port ? `${cfg.port}` : `${actualPort} (requested: ${cfg.port})`;
+    updateStatus(`DevScope: Running @ ${cfg.host}:${portDisplay}`, 'Click to stop');
+
+    // Show port changed notification
+    if (actualPort !== cfg.port) {
+      vscode.window.showWarningMessage(
+        `DevScope: Requested port ${cfg.port} was busy, using port ${actualPort} instead. You can change the port in settings.`,
+        'Open Settings',
+        'Learn More'
+      ).then(selection => {
+        if (selection === 'Open Settings') {
+          vscode.commands.executeCommand('workbench.action.openSettings', 'devscopeapi.port');
+        } else if (selection === 'Learn More') {
+          vscode.env.openExternal(vscode.Uri.parse('https://code.visualstudio.com/docs/editor/settings'));
+        }
+      });
+    }
   } catch (e: any) {
-    const msg = e?.code === 'EADDRINUSE' ? `Port ${cfg.port} is in use` : (e?.message || 'Failed to start server');
+    let msg = e?.message || 'Failed to start server';
+    let actions: string[] = [];
+
+    // Provide specific guidance for common errors
+    if (e?.code === 'EADDRINUSE' || e?.message?.includes('busy') || e?.message?.includes('in use')) {
+      msg = `Port ${cfg.port} is already in use. Please free up the port or choose a different port.`;
+      actions = ['Open Settings', 'Retry'];
+    } else if (e?.message?.includes('No available ports found')) {
+      msg = `Ports ${cfg.port}-${cfg.port + 99} are all in use. Please check your network or change to a different port range.`;
+      actions = ['Open Settings'];
+    } else if (e?.message?.includes('EACCES') || e?.message?.includes('permission')) {
+      msg = `Permission denied for port ${cfg.port}. Try using a higher port (above 1024) or run with administrator privileges.`;
+      actions = ['Open Settings'];
+    }
+
     updateStatus('DevScope: Error', msg, true);
     logger.error('Failed to start server', e);
-    vscode.window.showErrorMessage(`DevScope server failed to start: ${msg}`);
+
+    const choice = await vscode.window.showErrorMessage(`DevScope server failed to start: ${msg}`, ...actions);
+
+    if (choice === 'Open Settings') {
+      vscode.commands.executeCommand('workbench.action.openSettings', 'devscopeapi.port');
+    } else if (choice === 'Retry') {
+      setTimeout(() => startServer(context), 1000); // Delay before retry
+    }
   }
 }
 
@@ -58,7 +96,9 @@ export async function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(vscode.commands.registerCommand('devscope.showStatus', () => {
     const cfg = getConfig();
     const startedAt = (serverCtl?.getStartedAt() || undefined)?.toISOString() || 'n/a';
-    vscode.window.showInformationMessage(`DevScope @ http://${cfg.host}:${cfg.port} | startedAt: ${startedAt}`);
+    const actualPort = serverCtl?.getActualPort() || cfg.port;
+    const portDisplay = actualPort === cfg.port ? `${actualPort}` : `${actualPort} (requested: ${cfg.port})`;
+    vscode.window.showInformationMessage(`DevScope @ http://${cfg.host}:${portDisplay} | startedAt: ${startedAt}`);
   }));
 
   // Status bar click toggles

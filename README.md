@@ -27,8 +27,11 @@ npm run compile
 
 ## 快速验证（命令行）
 ```bash
-# 健康检查
+# 健康检查（默认端口 3000）
 curl -s http://127.0.0.1:3000/health | jq .
+
+# 使用自定义端口（例如 8080）
+curl -s http://127.0.0.1:8080/health | jq .
 
 # 仅活动文件（默认）
 curl -s "http://127.0.0.1:3000/diagnostics" | jq .
@@ -42,15 +45,58 @@ curl -s "http://127.0.0.1:3000/diagnostics?severity=info" | jq .
 
 # 组合使用：工作区范围 + info 级别及以上
 curl -s "http://127.0.0.1:3000/diagnostics?workspaceOnly=true&severity=info" | jq .
+
+# 自定义端口 + 严重性过滤
+curl -s "http://127.0.0.1:8080/diagnostics?workspaceOnly=true&severity=warning" | jq .
 ```
 
 ## 配置项（Settings）
-- `devscopeapi.port: number`（默认 `3000`）
-- `devscopeapi.host: string`（默认 `127.0.0.1`）
-- `devscopeapi.response.format: string`（默认 `v1`）
-- `devscopeapi.diagnostics.defaultScope: "active" | "workspace" | "all"`（默认 `"active"`）
 
-变更 `host/port` 需重启服务；扩展会提示是否立即重启生效。
+### 网络配置
+- **`devscopeapi.port: number`**（默认 `3000`，范围 `1024-65535`）
+  - 设置 HTTP 服务器监听端口
+  - 如果指定端口被占用，自动寻找可用端口
+  - 端口冲突时会显示提示和解决方案
+- **`devscopeapi.host: string`**（默认 `127.0.0.1`）
+  - 设置监听地址，建议使用 `127.0.0.1` 保证安全
+
+### 功能配置
+- **`devscopeapi.response.format: string`**（默认 `v1`）
+  - API 响应格式版本
+- **`devscopeapi.diagnostics.defaultScope: "active" | "workspace" | "all"`**（默认 `"active"`）
+  - 默认诊断范围设置
+
+### 端口配置方法
+
+1. **VS Code 设置界面**：
+   - 打开设置 (`Ctrl/Cmd + ,`)
+   - 搜索 "devscope" 或 "DevScope"
+   - 修改 "DevScope Api › Port" 数值
+
+2. **settings.json 配置**：
+   ```json
+   {
+     "devscopeapi.port": 8080
+   }
+   ```
+
+3. **命令行验证**：
+   ```bash
+   # 使用自定义端口访问 API
+   curl "http://127.0.0.1:8080/health"
+   curl "http://127.0.0.1:8080/diagnostics"
+   ```
+
+### 端口冲突处理
+- **自动检测**：启动前检查端口可用性
+- **智能选择**：端口被占用时自动寻找可用端口
+- **友好提示**：显示冲突原因和解决建议
+- **快速操作**：提供打开设置、重试等快捷操作
+
+**注意事项**：
+- 变更 `host/port` 需重启服务
+- 扩展会自动提示是否立即重启生效
+- 低于 1024 的端口可能需要管理员权限
 
 ## API 契约
 - OpenAPI 文档：`docs/api/openapi.yaml`

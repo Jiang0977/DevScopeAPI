@@ -8,12 +8,6 @@ function makeUri(raw: string): Uri {
 
 const activeUri = makeUri('file:///active.ts');
 
-export const window = {
-  activeTextEditor: {
-    document: { uri: activeUri }
-  }
-};
-
 type Diagnostic = {
   range: { start: { line: number; character: number }; end: { line: number; character: number } };
   severity: DiagnosticSeverity;
@@ -47,5 +41,25 @@ export const languages = {
   }
 };
 
-export const workspace = {} as any;
+export const window = {
+  activeTextEditor: {
+    document: { uri: activeUri }
+  },
+  createOutputChannel: jest.fn((name: string) => ({
+    name,
+    show: jest.fn(),
+    hide: jest.fn(),
+    dispose: jest.fn(),
+    appendLine: jest.fn(),
+    clear: jest.fn()
+  }))
+};
+
+export const commands = {
+  registerCommand: jest.fn()
+};
+
+export const StatusBarAlignment = { Left: 1 };
+
+export const ThemeColor = jest.fn();
 

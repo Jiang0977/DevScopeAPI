@@ -11,30 +11,26 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:devscope.startServer",
-    "onCommand:devscope.stopServer",
-    "onCommand:devscope.restartServer",
-    "onCommand:devscope.showStatus",
-    "*"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
         "command": "devscope.startServer",
-        "title": "DevScope: Start Server"
+        "title": "%commands.startServer%"
       },
       {
         "command": "devscope.stopServer",
-        "title": "DevScope: Stop Server"
+        "title": "%commands.stopServer%"
       },
       {
         "command": "devscope.restartServer",
-        "title": "DevScope: Restart Server"
+        "title": "%commands.restartServer%"
       },
       {
         "command": "devscope.showStatus",
-        "title": "DevScope: Show Status"
+        "title": "%commands.showStatus%"
       }
     ],
     "configuration": {
@@ -70,6 +66,15 @@
             "all"
           ],
           "description": "Default diagnostics scope when not specified by query params."
+        },
+        "devscopeapi.language": {
+          "type": "string",
+          "default": "en",
+          "enum": [
+            "en",
+            "zh-CN"
+          ],
+          "description": "Display language for notifications and messages."
         }
       }
     }

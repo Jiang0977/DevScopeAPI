@@ -3,10 +3,44 @@ import http from 'http';
 import { diagnosticsHandler } from './api/diagnosticsController';
 import { Logger } from './utils/logger';
 import { toErrorResponse } from './utils/errors';
+import * as net from 'net';
 
 export interface ServerConfig {
   port: number;
   host: string;
+}
+
+/**
+ * Check if a port is available
+ */
+function isPortAvailable(port: number, host: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+
+    server.listen(port, host, () => {
+      server.once('close', () => {
+        resolve(true);
+      });
+      server.close();
+    });
+
+    server.on('error', () => {
+      resolve(false);
+    });
+  });
+}
+
+/**
+ * Find an available port starting from the given port
+ */
+async function findAvailablePort(startPort: number, host: string, maxAttempts = 100): Promise<number> {
+  for (let i = 0; i < maxAttempts; i++) {
+    const port = startPort + i;
+    if (await isPortAvailable(port, host)) {
+      return port;
+    }
+  }
+  throw new Error(`No available ports found in range ${startPort}-${startPort + maxAttempts - 1}`);
 }
 
 export interface RunningServerInfo {
@@ -17,6 +51,7 @@ export interface RunningServerInfo {
 
 export function createServer(logger: Logger, cfg: ServerConfig) {
   let running: RunningServerInfo | null = null;
+  let actualPort = cfg.port;
 
   function requestIdMiddleware(req: Request, res: Response, next: NextFunction) {
     const id = Math.random().toString(36).slice(2, 10);
@@ -27,6 +62,23 @@ export function createServer(logger: Logger, cfg: ServerConfig) {
 
   async function start(): Promise<void> {
     if (running) return;
+
+    // Check port availability first
+    logger.info(`Checking port availability for ${cfg.host}:${cfg.port}`);
+    const portAvailable = await isPortAvailable(cfg.port, cfg.host);
+
+    if (!portAvailable) {
+      logger.warn(`Port ${cfg.port} is not available, searching for alternative...`);
+      try {
+        actualPort = await findAvailablePort(cfg.port, cfg.host);
+        logger.info(`Found available port: ${actualPort}`);
+      } catch (e) {
+        throw new Error(`Port ${cfg.port} and alternative ports are not available. Please free up port ${cfg.port} or choose a different port.`);
+      }
+    } else {
+      actualPort = cfg.port;
+    }
+
     const app = express();
 
     app.disable('x-powered-by');
@@ -36,7 +88,7 @@ export function createServer(logger: Logger, cfg: ServerConfig) {
     // Health endpoint
     app.get('/health', (_req: Request, res: Response) => {
       const startedAt = running?.startedAt ?? new Date();
-      res.json({ status: 'ok', version: 'v1', pid: process.pid, startedAt: startedAt.toISOString(), host: cfg.host, port: cfg.port });
+      res.json({ status: 'ok', version: 'v1', pid: process.pid, startedAt: startedAt.toISOString(), host: cfg.host, port: actualPort });
     });
 
     // Diagnostics
@@ -54,14 +106,20 @@ export function createServer(logger: Logger, cfg: ServerConfig) {
     });
 
     await new Promise<void>((resolve, reject) => {
-      const server = app.listen(cfg.port, cfg.host);
+      const server = app.listen(actualPort, cfg.host);
       server.once('listening', () => {
         running = { app, server, startedAt: new Date() };
-        logger.info(`Server listening on http://${cfg.host}:${cfg.port}`);
+        const portInfo = actualPort === cfg.port ? `${actualPort}` : `${actualPort} (requested: ${cfg.port})`;
+        logger.info(`Server listening on http://${cfg.host}:${portInfo}`);
         resolve();
       });
       server.once('error', (e) => {
-        reject(e);
+        logger.error(`Failed to start server on port ${actualPort}`, e);
+        if (actualPort !== cfg.port) {
+          reject(new Error(`Failed to start on alternative port ${actualPort}. Port ${cfg.port} may be in use.`));
+        } else {
+          reject(e);
+        }
       });
     });
   }
@@ -82,6 +140,10 @@ export function createServer(logger: Logger, cfg: ServerConfig) {
     return running?.startedAt ?? null;
   }
 
-  return { start, stop, isRunning, getStartedAt };
+  function getActualPort(): number {
+    return actualPort;
+  }
+
+  return { start, stop, isRunning, getStartedAt, getActualPort };
 }
 

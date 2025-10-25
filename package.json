@@ -2,7 +2,7 @@
   "name": "devscope-api",
   "displayName": "DevScope API",
   "description": "Expose VS Code diagnostics and status via a local HTTP API.",
-  "version": "0.1.1",
+  "version": "0.1.6",
   "publisher": "Jonan",
   "engines": {
     "vscode": "^1.85.0"
@@ -80,12 +80,14 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
+    "vscode:prepublish": "npm run build",
     "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "package": "npm run generate-icons && @vscode/vsce package --dependencies",
-    "package:only": "@vscode/vsce package --dependencies",
-    "package:no-deps": "npm run generate-icons && @vscode/vsce package",
+    "build": "webpack --mode=production",
+    "build:dev": "webpack --mode=development",
+    "watch": "webpack --watch --mode=development",
+    "package": "npm run generate-icons && npm run build && @vscode/vsce package",
+    "package:only": "npm run build && @vscode/vsce package",
+    "package:no-deps": "npm run generate-icons && npm run build && @vscode/vsce package",
     "test": "jest",
     "generate-icons": "node scripts/generate-icons.js",
     "mcp:github": "@modelcontextprotocol/server-github"
@@ -102,9 +104,13 @@
     "sharp": "^0.34.4",
     "supertest": "^7.1.4",
     "ts-jest": "^29.2.5",
-    "typescript": "^5.4.0"
+    "ts-loader": "^9.5.4",
+    "typescript": "^5.4.0",
+    "webpack": "^5.102.1",
+    "webpack-cli": "^6.0.1"
   },
   "dependencies": {
+    "body-parser": "^1.20.3",
     "express": "^4.19.2"
   },
   "repository": {
